@@ -4,4 +4,6 @@ import Html
 
 
 main =
-    Html.text "Hello, Bingo!"
+    "Mike's Game #3"
+        |> String.toUpper
+        |> Html.text
