@@ -24,13 +24,18 @@ type alias Entry =
 
 initialModel : Model
 initialModel =
-    Model "Mike" 1 initialEntries
+    { name = "Mike"
+    , gameNumber = 1
+    , entries = initialEntries
+    }
 
 
 initialEntries : List Entry
 initialEntries =
     [ Entry 1 "Future-Proof" 100 False
     , Entry 2 "Doing Agile" 200 False
+    , Entry 3 "In The Cloud" 300 False
+    , Entry 4 "Rock-Star Ninja" 400 False
     ]
 
 
@@ -69,11 +74,29 @@ viewFooter =
         ]
 
 
+viewEntryItem : Entry -> Html msg
+viewEntryItem entry =
+    li []
+        [ span [ class "phrase" ] [ text entry.phrase ]
+        , span [ class "points" ] [ text (toString entry.points) ]
+        ]
+
+
+viewEntryList : List Entry -> Html msg
+viewEntryList entries =
+    let
+        listOfEntries =
+            List.map viewEntryItem entries
+    in
+        ul [] listOfEntries
+
+
 view : Model -> Html msg
 view model =
     div [ class "content" ]
         [ viewHeader "BUZZWORD BINGO"
         , viewPlayer model.name model.gameNumber
+        , viewEntryList model.entries
         , div [ class "debug" ] [ text (toString model) ]
         , viewFooter
         ]
