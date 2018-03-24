@@ -33,10 +33,10 @@ initialModel =
 
 initialEntries : List Entry
 initialEntries =
-    [ Entry 1 "Future-Proof" 100 False
-    , Entry 2 "Doing Agile" 200 False
-    , Entry 3 "In The Cloud" 300 False
+    [ Entry 3 "In The Cloud" 300 False
+    , Entry 1 "Future-Proof" 100 False
     , Entry 4 "Rock-Star Ninja" 400 False
+    , Entry 2 "Doing Agile" 200 False
     ]
 
 
@@ -47,6 +47,7 @@ initialEntries =
 type Msg
     = NewGame
     | Mark Int
+    | Sort
 
 
 update : Msg -> Model -> Model
@@ -71,6 +72,13 @@ update msg model =
                         |> List.map markEntry
             in
                 { model | entries = newEntries }
+
+        Sort ->
+            let
+                sortByPoints entry1 entry2 =
+                    compare entry2.points entry1.points
+            in
+                { model | entries = List.sortWith sortByPoints model.entries }
 
 
 
@@ -130,7 +138,9 @@ view model =
         , viewPlayer model.name model.gameNumber
         , viewEntryList model.entries
         , div [ class "button-group" ]
-            [ button [ onClick NewGame ] [ text "New Game" ] ]
+            [ button [ onClick NewGame ] [ text "New Game" ]
+            , button [ onClick Sort ] [ text "Sort" ]
+            ]
         , div [ class "debug" ] [ text (toString model) ]
         , viewFooter
         ]
