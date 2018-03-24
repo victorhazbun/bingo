@@ -4,6 +4,8 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Random
+import Http
+import Json.Decode as Decode exposing (Decoder, field, succeed)
 
 
 -- MODEL
@@ -28,17 +30,8 @@ initialModel : Model
 initialModel =
     { name = "Mike"
     , gameNumber = 1
-    , entries = initialEntries
+    , entries = []
     }
-
-
-initialEntries : List Entry
-initialEntries =
-    [ Entry 3 "In The Cloud" 300 False
-    , Entry 1 "Future-Proof" 100 False
-    , Entry 4 "Rock-Star Ninja" 400 False
-    , Entry 2 "Doing Agile" 200 False
-    ]
 
 
 
@@ -50,6 +43,7 @@ type Msg
     | Mark Int
     | Sort
     | NewRandom Int
+    | NewEntries (Result Http.Error (List Entry))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -59,7 +53,19 @@ update msg model =
             { model | gameNumber = randomNumber } ! [ Cmd.none ]
 
         NewGame ->
-            { model | entries = initialEntries } ! [ generateRandomNumber ]
+            model ! [ generateRandomNumber, getEntries ]
+
+        NewEntries result ->
+            case result of
+                Ok randomEntries ->
+                    ( { model | entries = randomEntries }, Cmd.none )
+
+                Err error ->
+                    let
+                        _ =
+                            Debug.log "Oops!" error
+                    in
+                        ( model, Cmd.none )
 
         Mark id ->
             let
@@ -69,11 +75,11 @@ update msg model =
                     else
                         e
 
-                newEntries =
+                markedEntries =
                     model.entries
                         |> List.map markEntry
             in
-                { model | entries = newEntries } ! [ Cmd.none ]
+                { model | entries = markedEntries } ! [ Cmd.none ]
 
         Sort ->
             let
@@ -84,6 +90,19 @@ update msg model =
 
 
 
+-- DECODERS
+
+
+entryDecoder : Decoder Entry
+entryDecoder =
+    Decode.map4 Entry
+        (field "id" Decode.int)
+        (field "phrase" Decode.string)
+        (field "points" Decode.int)
+        (succeed False)
+
+
+
 -- COMMANDS
 -- In Elm, a command is a set of instructions. And the Elm Runtime is the perfect Ikea furniture assembler.
 
@@ -91,6 +110,18 @@ update msg model =
 generateRandomNumber : Cmd Msg
 generateRandomNumber =
     Random.generate NewRandom (Random.int 1 100)
+
+
+entriesUrl : String
+entriesUrl =
+    "http://localhost:3000/random-entries"
+
+
+getEntries : Cmd Msg
+getEntries =
+    (Decode.list entryDecoder)
+        |> Http.get entriesUrl
+        |> Http.send NewEntries
 
 
 
@@ -176,7 +207,7 @@ view model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( initialModel, generateRandomNumber )
+    initialModel ! [ generateRandomNumber, getEntries ]
 
 
 main : Program Never Model Msg
