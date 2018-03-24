@@ -135,8 +135,7 @@ sumMarkedPoints : List Entry -> Int
 sumMarkedPoints entries =
     entries
         |> List.filter .marked
-        |> List.map .points
-        |> List.sum
+        |> List.foldl (\e sum -> sum + e.points) 0
 
 
 viewScore : Int -> Html Msg
