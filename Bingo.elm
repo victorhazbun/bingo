@@ -56,10 +56,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NewRandom randomNumber ->
-            ( { model | gameNumber = randomNumber }, Cmd.none )
+            { model | gameNumber = randomNumber } ! [ Cmd.none ]
 
         NewGame ->
-            ( { model | entries = initialEntries }, generateRandomNumber )
+            { model | entries = initialEntries } ! [ generateRandomNumber ]
 
         Mark id ->
             let
@@ -73,18 +73,19 @@ update msg model =
                     model.entries
                         |> List.map markEntry
             in
-                ( { model | entries = newEntries }, Cmd.none )
+                { model | entries = newEntries } ! [ Cmd.none ]
 
         Sort ->
             let
                 sortByPoints entry1 entry2 =
                     compare entry2.points entry1.points
             in
-                ( { model | entries = List.sortWith sortByPoints model.entries }, Cmd.none )
+                { model | entries = List.sortWith sortByPoints model.entries } ! [ Cmd.none ]
 
 
 
 -- COMMANDS
+-- In Elm, a command is a set of instructions. And the Elm Runtime is the perfect Ikea furniture assembler.
 
 
 generateRandomNumber : Cmd Msg
@@ -173,11 +174,16 @@ view model =
         ]
 
 
+init : ( Model, Cmd Msg )
+init =
+    ( initialModel, generateRandomNumber )
+
+
 main : Program Never Model Msg
 main =
     Html.program
-        { init = ( initialModel, generateRandomNumber )
+        { init = init
         , view = view
         , update = update
-        , subscriptions = (\_ -> Sub.none)
+        , subscriptions = (always Sub.none)
         }
