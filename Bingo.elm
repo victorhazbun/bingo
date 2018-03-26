@@ -98,8 +98,17 @@ entryDecoder =
     Decode.map4 Entry
         (field "id" Decode.int)
         (field "phrase" Decode.string)
-        (field "points" Decode.int)
+        (Decode.oneOf
+            [ (field "points" Decode.int)
+            , succeed 100
+            ]
+        )
         (succeed False)
+
+
+entryListDecoder : Decoder (List Entry)
+entryListDecoder =
+    Decode.list entryDecoder
 
 
 
@@ -119,7 +128,7 @@ entriesUrl =
 
 getEntries : Cmd Msg
 getEntries =
-    (Decode.list entryDecoder)
+    entryListDecoder
         |> Http.get entriesUrl
         |> Http.send NewEntries
 
