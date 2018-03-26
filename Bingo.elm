@@ -6,6 +6,7 @@ import Html.Events exposing (onClick)
 import Random
 import Http
 import Json.Decode as Decode exposing (int, string, float, Decoder)
+import Json.Encode as Encode
 import Json.Decode.Pipeline as JsonDecodePipeline exposing (decode, required, optional, hardcoded)
 
 
@@ -25,6 +26,13 @@ type alias Entry =
     , phrase : String
     , points : Int
     , marked : Bool
+    }
+
+
+type alias Score =
+    { id : Int
+    , name : String
+    , score : Int
     }
 
 
@@ -48,6 +56,8 @@ type Msg
     | NewRandom Int
     | NewEntries (Result Http.Error (List Entry))
     | CloseAlert
+    | ShareScore
+    | NewScore (Result Http.Error Score)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -55,6 +65,28 @@ update msg model =
     case msg of
         NewRandom randomNumber ->
             { model | gameNumber = randomNumber } ! [ Cmd.none ]
+
+        ShareScore ->
+            ( model, postScore model )
+
+        NewScore result ->
+            case result of
+                Ok score ->
+                    let
+                        message =
+                            "Your score of "
+                                ++ (toString score.score)
+                                ++ " was successfully shared!"
+                    in
+                        ( { model | alertMessage = Just message }, Cmd.none )
+
+                Err error ->
+                    let
+                        message =
+                            "Error posting your score: "
+                                ++ (toString error)
+                    in
+                        ( { model | alertMessage = Just message }, Cmd.none )
 
         NewGame ->
             model ! [ generateRandomNumber, getEntries ]
@@ -119,7 +151,7 @@ update msg model =
 
 
 
--- DECODERS
+-- DECODERS/ENCODERS
 
 
 entryDecoder : Decoder Entry
@@ -129,6 +161,22 @@ entryDecoder =
         |> JsonDecodePipeline.required "phrase" string
         |> JsonDecodePipeline.optional "points" int 100
         |> JsonDecodePipeline.hardcoded False
+
+
+scoreDecoder : Decoder Score
+scoreDecoder =
+    JsonDecodePipeline.decode Score
+        |> JsonDecodePipeline.required "id" int
+        |> JsonDecodePipeline.required "name" string
+        |> JsonDecodePipeline.required "score" int
+
+
+encodeScore : Model -> Encode.Value
+encodeScore model =
+    Encode.object
+        [ ( "name", Encode.string model.name )
+        , ( "score", Encode.int (sumMarkedPoints model.entries) )
+        ]
 
 
 
@@ -144,6 +192,22 @@ generateRandomNumber =
 entriesUrl : String
 entriesUrl =
     "http://localhost:3000/random-entries"
+
+
+postScore : Model -> Cmd Msg
+postScore model =
+    let
+        url =
+            "http://localhost:3000/scores"
+
+        body =
+            encodeScore model
+                |> Http.jsonBody
+
+        request =
+            Http.post url body scoreDecoder
+    in
+        Http.send NewScore request
 
 
 getEntries : Cmd Msg
@@ -229,6 +293,7 @@ view model =
         , div [ class "button-group" ]
             [ button [ onClick NewGame ] [ text "New Game" ]
             , button [ onClick Sort ] [ text "Sort" ]
+            , button [ onClick ShareScore ] [ text "Share Score" ]
             ]
         , div [ class "debug" ] [ text (toString model) ]
         , viewFooter
