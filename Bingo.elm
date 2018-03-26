@@ -184,28 +184,36 @@ encodeScore model =
 -- In Elm, a command is a set of instructions. And the Elm Runtime is the perfect Ikea furniture assembler.
 
 
+apiUrlPrefix : String
+apiUrlPrefix =
+    "http://localhost:3000"
+
+
 generateRandomNumber : Cmd Msg
 generateRandomNumber =
     Random.generate NewRandom (Random.int 1 100)
-
-
-entriesUrl : String
-entriesUrl =
-    "http://localhost:3000/random-entries"
 
 
 postScore : Model -> Cmd Msg
 postScore model =
     let
         url =
-            "http://localhost:3000/scores"
+            (apiUrlPrefix ++ "/scores")
 
         body =
             encodeScore model
                 |> Http.jsonBody
 
         request =
-            Http.post url body scoreDecoder
+            Http.request
+                { method = "POST"
+                , headers = []
+                , url = url
+                , body = body
+                , expect = Http.expectJson scoreDecoder
+                , timeout = Nothing
+                , withCredentials = False
+                }
     in
         Http.send NewScore request
 
@@ -213,7 +221,7 @@ postScore model =
 getEntries : Cmd Msg
 getEntries =
     (Decode.list entryDecoder)
-        |> Http.get entriesUrl
+        |> Http.get (apiUrlPrefix ++ "/random-entries")
         |> Http.send NewEntries
 
 
@@ -282,6 +290,19 @@ viewScore sum =
         ]
 
 
+hasZeroScore : Model -> Bool
+hasZeroScore model =
+    (sumMarkedPoints model.entries) == 0
+
+
+viewScoreButtonText : Model -> Html msg
+viewScoreButtonText model =
+    if (hasZeroScore model) then
+        text "Play to share"
+    else
+        text "Share Score"
+
+
 view : Model -> Html Msg
 view model =
     div [ class "content" ]
@@ -293,7 +314,7 @@ view model =
         , div [ class "button-group" ]
             [ button [ onClick NewGame ] [ text "New Game" ]
             , button [ onClick Sort ] [ text "Sort" ]
-            , button [ onClick ShareScore ] [ text "Share Score" ]
+            , button [ classList [ ( "disabled", hasZeroScore model ) ], onClick ShareScore, disabled (hasZeroScore model) ] [ viewScoreButtonText model ]
             ]
         , div [ class "debug" ] [ text (toString model) ]
         , viewFooter
@@ -313,15 +334,10 @@ viewAlertMessage alertMessage =
             text ""
 
 
-init : ( Model, Cmd Msg )
-init =
-    initialModel ! [ generateRandomNumber, getEntries ]
-
-
 main : Program Never Model Msg
 main =
     Html.program
-        { init = init
+        { init = ( initialModel, getEntries )
         , view = view
         , update = update
         , subscriptions = (always Sub.none)

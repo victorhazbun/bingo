@@ -19,7 +19,7 @@ header {
 }
 
 .content {
-  margin: 20px auto; 
+  margin: 20px auto;
   width: 500px;
 }
 
@@ -75,7 +75,7 @@ button:hover {
 input[type="text"] {
   padding: 6px 10px;
   font-size: 1.15em;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   display: inline-block;
 }
 
@@ -164,7 +164,7 @@ li.marked {
   color: #797B74;
   padding: 10px;
   text-align: center;
-  background:  #FBF7DD;  
+  background:  #FBF7DD;
   border: 1px solid #F8E7C1;
   font-weight: bold;
 }
@@ -188,4 +188,9 @@ hr {
   margin: 20px 0;
   border: 0;
   border-top: 1px dashed #c5c5c5;
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: .65;
 }
