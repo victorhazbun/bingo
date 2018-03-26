@@ -5,7 +5,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Random
 import Http
-import Json.Decode as Decode exposing (Decoder, field, succeed)
+import Json.Decode as Decode exposing (int, string, float, Decoder)
+import Json.Decode.Pipeline as JsonDecodePipeline exposing (decode, required, optional, hardcoded)
 
 
 -- MODEL
@@ -95,20 +96,11 @@ update msg model =
 
 entryDecoder : Decoder Entry
 entryDecoder =
-    Decode.map4 Entry
-        (field "id" Decode.int)
-        (field "phrase" Decode.string)
-        (Decode.oneOf
-            [ (field "points" Decode.int)
-            , succeed 100
-            ]
-        )
-        (succeed False)
-
-
-entryListDecoder : Decoder (List Entry)
-entryListDecoder =
-    Decode.list entryDecoder
+    JsonDecodePipeline.decode Entry
+        |> JsonDecodePipeline.required "id" int
+        |> JsonDecodePipeline.required "phrase" string
+        |> JsonDecodePipeline.optional "points" int 100
+        |> JsonDecodePipeline.hardcoded False
 
 
 
@@ -128,7 +120,7 @@ entriesUrl =
 
 getEntries : Cmd Msg
 getEntries =
-    entryListDecoder
+    (Decode.list entryDecoder)
         |> Http.get entriesUrl
         |> Http.send NewEntries
 
