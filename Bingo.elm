@@ -5,11 +5,10 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Random
 import Http
-import Json.Decode as Decode exposing (int, string, float, Decoder)
-import Json.Encode as Encode
-import Json.Decode.Pipeline as JsonDecodePipeline exposing (decode, required, optional, hardcoded)
 import ViewHelpers exposing (..)
+import ErrorHandlerHelpers exposing (..)
 import Entry as BingoEntry
+import Score as BingoScore
 
 
 -- MODEL
@@ -27,13 +26,6 @@ type alias Model =
     , alertMessage : Maybe String
     , nameInput : String
     , gameState : GameState
-    }
-
-
-type alias Score =
-    { id : Int
-    , name : String
-    , score : Int
     }
 
 
@@ -60,7 +52,7 @@ type Msg
     | NewEntries (Result Http.Error (List BingoEntry.Entry))
     | CloseAlert
     | ShareScore
-    | NewScore (Result Http.Error Score)
+    | NewScore (Result Http.Error BingoScore.Score)
     | SetNameInput String
     | SaveName
     | CancelName
@@ -98,7 +90,7 @@ update msg model =
             { model | gameNumber = randomNumber } ! [ Cmd.none ]
 
         ShareScore ->
-            ( model, postScore model )
+            ( model, postScore model.name (BingoEntry.sumMarkedPoints model.entries) )
 
         NewScore result ->
             case result of
@@ -139,53 +131,6 @@ update msg model =
                 { model | entries = List.sortWith sortByPoints model.entries } ! [ Cmd.none ]
 
 
-httpErrorToMessage : Http.Error -> String
-httpErrorToMessage error =
-    case error of
-        Http.NetworkError ->
-            "Is the server running?"
-
-        Http.Timeout ->
-            "Request timed out!"
-
-        Http.BadUrl url ->
-            ("Invalid URL: " ++ url)
-
-        Http.BadStatus response ->
-            case response.status.code of
-                401 ->
-                    "Unauthorized"
-
-                404 ->
-                    "Not Found"
-
-                code ->
-                    (toString code)
-
-        Http.BadPayload reason response ->
-            reason
-
-
-
--- DECODERS/ENCODERS
-
-
-scoreDecoder : Decoder Score
-scoreDecoder =
-    JsonDecodePipeline.decode Score
-        |> JsonDecodePipeline.required "id" int
-        |> JsonDecodePipeline.required "name" string
-        |> JsonDecodePipeline.required "score" int
-
-
-encodeScore : Model -> Encode.Value
-encodeScore model =
-    Encode.object
-        [ ( "name", Encode.string model.name )
-        , ( "score", Encode.int (BingoEntry.sumMarkedPoints model.entries) )
-        ]
-
-
 
 -- COMMANDS
 -- In Elm, a command is a set of instructions. And the Elm Runtime is the perfect Ikea furniture assembler.
@@ -201,28 +146,9 @@ generateRandomNumber =
     Random.generate NewRandom (Random.int 1 100)
 
 
-postScore : Model -> Cmd Msg
-postScore model =
-    let
-        url =
-            (apiUrlPrefix ++ "/scores")
-
-        body =
-            encodeScore model
-                |> Http.jsonBody
-
-        request =
-            Http.request
-                { method = "POST"
-                , headers = []
-                , url = url
-                , body = body
-                , expect = Http.expectJson scoreDecoder
-                , timeout = Nothing
-                , withCredentials = False
-                }
-    in
-        Http.send NewScore request
+postScore : String -> Int -> Cmd Msg
+postScore name score =
+    BingoScore.postScore NewScore (apiUrlPrefix ++ "/scores") name score
 
 
 getEntries : Cmd Msg
@@ -241,41 +167,6 @@ viewPlayer name gameNumber =
             [ text name ]
         , text (" - Game #" ++ (toString gameNumber))
         ]
-
-
-viewHeader : String -> Html Msg
-viewHeader title =
-    header []
-        [ h1 [] [ text title ] ]
-
-
-viewFooter : Html Msg
-viewFooter =
-    footer []
-        [ a [ href "http://elm-lang.org" ]
-            [ text "Powered By Elm" ]
-        ]
-
-
-viewScore : Int -> Html Msg
-viewScore sum =
-    div [ class "score" ]
-        [ span [ class "label" ] [ text "Score" ]
-        , span [ class "value" ] [ text (toString sum) ]
-        ]
-
-
-hasZeroScore : Model -> Bool
-hasZeroScore model =
-    (BingoEntry.sumMarkedPoints model.entries) == 0
-
-
-viewScoreButtonText : Model -> String
-viewScoreButtonText model =
-    if (hasZeroScore model) then
-        "Play to share"
-    else
-        "Share Score"
 
 
 viewNameInput : Model -> Html Msg
@@ -307,14 +198,12 @@ view model =
         , alert CloseAlert model.alertMessage
         , viewNameInput model
         , BingoEntry.viewEntryList Mark model.entries
-        , viewScore (BingoEntry.sumMarkedPoints model.entries)
+        , BingoScore.viewScore (BingoEntry.sumMarkedPoints model.entries)
         , div [ class "button-group" ]
             [ primaryButton NewGame "New Game" Nothing Nothing
             , primaryButton Sort "Sort" Nothing Nothing
-            , primaryButton ShareScore (viewScoreButtonText model) (Just (hasZeroScore model)) (Just [ ( "disabled", hasZeroScore model ) ])
+            , primaryButton ShareScore (BingoScore.viewScoreButtonText model.entries) (Just (BingoScore.hasZeroScore model.entries)) (Just [ ( "disabled", BingoScore.hasZeroScore model.entries ) ])
             ]
-
-        --, div [ class "debug" ] [ text (toString model) ]
         , viewFooter
         ]
 

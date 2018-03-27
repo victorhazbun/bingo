@@ -16,6 +16,13 @@ type alias Entry =
     }
 
 
+getEntries : (Result Http.Error (List Entry) -> msg) -> String -> Cmd msg
+getEntries msg url =
+    (Decode.list entryDecoder)
+        |> Http.get url
+        |> Http.send msg
+
+
 markEntryWithId : Int -> List Entry -> List Entry
 markEntryWithId id entries =
     let
@@ -36,32 +43,15 @@ sumMarkedPoints entries =
         |> List.foldl (\e sum -> sum + e.points) 0
 
 
-
--- DECODERS/ENCODERS
-
-
-entryDecoder : Decoder Entry
-entryDecoder =
-    JsonDecodePipeline.decode Entry
-        |> JsonDecodePipeline.required "id" int
-        |> JsonDecodePipeline.required "phrase" string
-        |> JsonDecodePipeline.optional "points" int 100
-        |> JsonDecodePipeline.hardcoded False
+viewEntryList : (Int -> msg) -> List Entry -> Html msg
+viewEntryList msg entries =
+    entries
+        |> List.map (viewEntryItem msg)
+        |> ul []
 
 
 
--- COMMANDS
-
-
-getEntries : (Result Http.Error (List Entry) -> msg) -> String -> Cmd msg
-getEntries msg url =
-    (Decode.list entryDecoder)
-        |> Http.get url
-        |> Http.send msg
-
-
-
--- VIEW
+-- PRIVATE HELPERS --
 
 
 viewEntryItem : (Int -> msg) -> Entry -> Html msg
@@ -72,8 +62,10 @@ viewEntryItem msg entry =
         ]
 
 
-viewEntryList : (Int -> msg) -> List Entry -> Html msg
-viewEntryList msg entries =
-    entries
-        |> List.map (viewEntryItem msg)
-        |> ul []
+entryDecoder : Decoder Entry
+entryDecoder =
+    JsonDecodePipeline.decode Entry
+        |> JsonDecodePipeline.required "id" int
+        |> JsonDecodePipeline.required "phrase" string
+        |> JsonDecodePipeline.optional "points" int 100
+        |> JsonDecodePipeline.hardcoded False
