@@ -1,7 +1,7 @@
 # bingo
 Elm Bingo Application 🎰
 
-![How does it looks](https://www.evernote.com/l/AWhwOVI8nENK_YL6nDZxAXdLvWhRjZ0pxVIB/image.png)
+![How does it looks](https://www.evernote.com/l/AWiY59-A0hdJtqova_EGA5wD607sXXh-i04B/image.png)
 
 ## Instructions
 
