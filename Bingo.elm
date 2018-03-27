@@ -80,12 +80,15 @@ update msg model =
             { model | gameState = state } ! [ Cmd.none ]
 
         SaveName ->
-            { model
-                | name = model.nameInput
-                , nameInput = ""
-                , gameState = Playing
-            }
-                ! [ Cmd.none ]
+            if String.isEmpty model.nameInput then
+                model ! [ Cmd.none ]
+            else
+                { model
+                    | name = model.nameInput
+                    , nameInput = ""
+                    , gameState = Playing
+                }
+                    ! [ Cmd.none ]
 
         CancelName ->
             { model
