@@ -367,7 +367,8 @@ view model =
             , button [ onClick Sort ] [ text "Sort" ]
             , button [ classList [ ( "disabled", hasZeroScore model ) ], onClick ShareScore, disabled (hasZeroScore model) ] [ viewScoreButtonText model ]
             ]
-        , div [ class "debug" ] [ text (toString model) ]
+
+        --, div [ class "debug" ] [ text (toString model) ]
         , viewFooter
         ]
 
