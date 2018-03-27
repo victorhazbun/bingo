@@ -9,6 +9,7 @@ import Json.Decode as Decode exposing (int, string, float, Decoder)
 import Json.Encode as Encode
 import Json.Decode.Pipeline as JsonDecodePipeline exposing (decode, required, optional, hardcoded)
 import ViewHelpers exposing (..)
+import Entry as BingoEntry
 
 
 -- MODEL
@@ -22,18 +23,10 @@ type GameState
 type alias Model =
     { name : String
     , gameNumber : Int
-    , entries : List Entry
+    , entries : List BingoEntry.Entry
     , alertMessage : Maybe String
     , nameInput : String
     , gameState : GameState
-    }
-
-
-type alias Entry =
-    { id : Int
-    , phrase : String
-    , points : Int
-    , marked : Bool
     }
 
 
@@ -64,7 +57,7 @@ type Msg
     | Mark Int
     | Sort
     | NewRandom Int
-    | NewEntries (Result Http.Error (List Entry))
+    | NewEntries (Result Http.Error (List BingoEntry.Entry))
     | CloseAlert
     | ShareScore
     | NewScore (Result Http.Error Score)
@@ -136,18 +129,7 @@ update msg model =
             { model | alertMessage = Nothing } ! [ Cmd.none ]
 
         Mark id ->
-            let
-                markEntry e =
-                    if e.id == id then
-                        { e | marked = (not e.marked) }
-                    else
-                        e
-
-                markedEntries =
-                    model.entries
-                        |> List.map markEntry
-            in
-                { model | entries = markedEntries } ! [ Cmd.none ]
+            { model | entries = BingoEntry.markEntryWithId id model.entries } ! [ Cmd.none ]
 
         Sort ->
             let
@@ -188,15 +170,6 @@ httpErrorToMessage error =
 -- DECODERS/ENCODERS
 
 
-entryDecoder : Decoder Entry
-entryDecoder =
-    JsonDecodePipeline.decode Entry
-        |> JsonDecodePipeline.required "id" int
-        |> JsonDecodePipeline.required "phrase" string
-        |> JsonDecodePipeline.optional "points" int 100
-        |> JsonDecodePipeline.hardcoded False
-
-
 scoreDecoder : Decoder Score
 scoreDecoder =
     JsonDecodePipeline.decode Score
@@ -209,7 +182,7 @@ encodeScore : Model -> Encode.Value
 encodeScore model =
     Encode.object
         [ ( "name", Encode.string model.name )
-        , ( "score", Encode.int (sumMarkedPoints model.entries) )
+        , ( "score", Encode.int (BingoEntry.sumMarkedPoints model.entries) )
         ]
 
 
@@ -254,9 +227,7 @@ postScore model =
 
 getEntries : Cmd Msg
 getEntries =
-    (Decode.list entryDecoder)
-        |> Http.get (apiUrlPrefix ++ "/random-entries")
-        |> Http.send NewEntries
+    BingoEntry.getEntries NewEntries (apiUrlPrefix ++ "/random-entries")
 
 
 
@@ -286,28 +257,6 @@ viewFooter =
         ]
 
 
-viewEntryItem : Entry -> Html Msg
-viewEntryItem entry =
-    li [ classList [ ( "marked", entry.marked ) ], onClick (Mark entry.id) ]
-        [ span [ class "phrase" ] [ text entry.phrase ]
-        , span [ class "points" ] [ text (toString entry.points) ]
-        ]
-
-
-viewEntryList : List Entry -> Html Msg
-viewEntryList entries =
-    entries
-        |> List.map viewEntryItem
-        |> ul []
-
-
-sumMarkedPoints : List Entry -> Int
-sumMarkedPoints entries =
-    entries
-        |> List.filter .marked
-        |> List.foldl (\e sum -> sum + e.points) 0
-
-
 viewScore : Int -> Html Msg
 viewScore sum =
     div [ class "score" ]
@@ -318,7 +267,7 @@ viewScore sum =
 
 hasZeroScore : Model -> Bool
 hasZeroScore model =
-    (sumMarkedPoints model.entries) == 0
+    (BingoEntry.sumMarkedPoints model.entries) == 0
 
 
 viewScoreButtonText : Model -> String
@@ -357,8 +306,8 @@ view model =
         , viewPlayer model.name model.gameNumber
         , alert CloseAlert model.alertMessage
         , viewNameInput model
-        , viewEntryList model.entries
-        , viewScore (sumMarkedPoints model.entries)
+        , BingoEntry.viewEntryList Mark model.entries
+        , viewScore (BingoEntry.sumMarkedPoints model.entries)
         , div [ class "button-group" ]
             [ primaryButton NewGame "New Game" Nothing Nothing
             , primaryButton Sort "Sort" Nothing Nothing
